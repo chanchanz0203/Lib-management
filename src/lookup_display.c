@@ -4,117 +4,148 @@
 #include "user.h"
 #include "book.h"
 
-void addUser()
+void displayBook()
 {
-    struct user newUser;
-    FILE *file = fopen("./data/libraryUser.dat","ab"); //"ab" ghi them
+    struct book displayBook;
+    FILE *file = fopen("./data/libraryBook.dat", "rb");
 
-    if(file == NULL)
-    {
+    if(file == NULL){
         printf("Can't open the file!\n");
         return;
     }
 
-    printf("Enter User ID: ");
-    if(scanf("%d", &newUser.id) != 1)
-    {
-        printf("Invalid input!\n");
-        return;
-    }
-    getchar(); //clear input buffer
+    printf("\n%-6s | %-30s | %-20s | %-10s\n",
+           "ID", "Title", "Author", "Status");
+    printf("---------------------------------------------------------------\n");
 
-    printf("Enter User Name: ");
-    fgets(newUser.name, 100, stdin);
-    newUser.name[strcspn(newUser.name, "\n")] = '\0'; //strcspn for find and remove unwanted characters
-
-    if (fwrite(&newUser, sizeof(struct user), 1, file) != 1)
+    while (fread(&displayBook, sizeof(struct book), 1, file) == 1)
     {
-        printf("Username added failed!\n");
-    }
-    else
-    {
-        printf("User added successfully!\n");
+        printf("%-6d | %-30s | %-20s | %-10s\n",
+               displayBook.id,
+               displayBook.title,
+               displayBook.author,
+               displayBook.status == 0 ? "Available" : "Borrowed");
     }
 
-    fclose(file);
+    fclose(file);    
 }
 
-void editUser(int targetId)
+void displayUser()
 {
-    char buffer[100];
-    struct user editUser;
-    FILE *file = fopen("./data/libraryUser.dat","rb+"); //rb+ doc va ghi
+    struct user u;
+    struct borrow br;
+    struct book b;
 
-    if(file == NULL)
+    FILE *userFile   = fopen("./data/libraryUser.dat", "rb");
+    FILE *borrowFile = fopen("./data/borrowBook.dat", "rb");
+    FILE *bookFile   = fopen("./data/libraryBook.dat", "rb");
+    
+    if (!userFile || !borrowFile || !bookFile)
     {
-        printf("Can't open the file!\n");
+        printf("Can't open file!\n");
+        if (userFile) fclose(userFile);
+        if (borrowFile) fclose(borrowFile);
+        if (bookFile) fclose(bookFile);
         return;
-    }
-
-    while(fread(&editUser, sizeof(struct user),1, file) == 1)
-    {
-        if(editUser.id == targetId)
-        {
-            printf("Edit User Name\nIf User Name Doesn't Change, Enter 0\n");
-            printf("Enter New User Name: \n");
-            fgets(buffer, sizeof(buffer), stdin);
-            buffer[strcspn(buffer, "\n")] = "\0";
-
-            if(strcmp(buffer, "0") != 0) //strcmp so sanh chuoi
-            {
-                strcpy(editUser.name, buffer); //strcpy sao chep chuoi
-            }
-            
-            fseek(file, -sizeof(struct user), SEEK_CUR);
-            fwrite(&editUser, sizeof(struct user), 1, file);
-
-            printf("Update successful!\n");
-            break;
-        }
     }
     
-    fclose(file);
-}
+    printf("\nUSER LIST\n");
+    printf("--------------------------------------------------\n");
 
-void deleteUser(int targetId)
-{
-    struct user deleteUser;
-    FILE *file = fopen("./data/libraryUser.dat", "rb"); //rb doc file
-    FILE *temp = fopen("./data/tempUser.dat", "wb"); //wb dung de xoa du lieu cua toan bo file
-
-    if (file == NULL || temp == NULL)
+    while (fread(&u, sizeof(struct user), 1, userFile) == 1)
     {
-        printf("Can't open the file!\n");
-        if (file) fclose(file); // neu file nao mo duoc (khac NULL) thi can dong lai (close)
-        if (temp) fclose(temp);
-        return;
-    }
-    int found = 0;
+        printf("\nUser ID: %d\nUser Name: %s", u.id, u.name);
+        printf("Borrowed books:\n");
 
-    while(fread(&deleteUser, sizeof(struct user), 1, file) == 1)
-    {
-        if(deleteUser.id = targetId)
+        //rewind dua con tro file ve dau file va xoa co EOF
+        rewind(borrowFile); // = fseek(file, 0, SEEK_SET); clearerr(file);
+        int hasBorrow = 0;
+
+        while (fread(&br, sizeof(struct borrow), 1, borrowFile) == 1)
         {
-            found = 1;
-            continue;
+            if (br.userId == u.id)
+            {
+                rewind(bookFile);
+
+                while (fread(&b, sizeof(struct book), 1, bookFile) == 1)
+                {
+                    if (b.id == br.bookId)
+                    {
+                        printf("  - %s (%s)\n",
+                               b.title,
+                               b.author);
+                        hasBorrow = 1;
+                        break;
+                    }
+                }
+            }
         }
 
-        //sao chep du lieu vao file temp.dat
-        fwrite(&deleteUser, sizeof( struct user), 1, temp);
-        
+        if (!hasBorrow)
+            printf("  No borrowed books\n");
     }
 
-    fclose(file);
-    fclose(temp);
+    fclose(userFile);
+    fclose(borrowFile);
+    fclose(bookFile);
+}
 
-    remove("./data/libraryUser.dat");
-    rename("./data/tempUser.dat", "./data/libraryUser.dat");
+void lookupTitle(char targetTitle[100])
+{
+    struct book b;
 
-    if(found)
+    FILE *book = fopen("./data/libraryBook.dat", "rb");
+    if(!book)
     {
-        printf("User deleted successfuly!\n");
-    }else
-    {
-        printf("User not found!\n");
+        printf("Can't open the file!");
+        return;
     }
+
+    printf("\n%-6s | %-30s | %-20s | %-10s\n",
+        "ID", "Title", "Author", "Status");
+    printf("---------------------------------------------------------------\n");
+
+    while(fread(&b, sizeof(struct book), 1, book))
+    {
+        if(strcmp(b.title, targetTitle) == 0)
+        {
+            printf("%-6d | %-30s | %-20s | %-10s\n",
+                b.id,
+                b.title,
+                b.author,
+                b.status == 0 ? "Available" : "Borrowed");            
+        }
+    }
+
+    fclose(book);
+}
+
+void lookupAuthor(char targetAuthor[50])
+{
+    struct book b;
+
+    FILE *book = fopen("./data/libraryBook.dat", "rb");
+    if(!book)
+    {
+        printf("Can't open the file!");
+        return;
+    }
+
+    printf("\n%-6s | %-30s | %-20s | %-10s\n",
+        "ID", "Title", "Author", "Status");
+    printf("---------------------------------------------------------------\n");
+
+    while(fread(&b, sizeof(struct book), 1, book))
+    {
+        if(strcmp(b.author, targetAuthor))
+        {
+            printf("%-6d | %-30s | %-20s | %-10s\n",
+                b.id,
+                b.title,
+                b.author,
+                b.status == 0 ? "Available" : "Borrowed");            
+        }
+    }
+
+    fclose(book);
 }
