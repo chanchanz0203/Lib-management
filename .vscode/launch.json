@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [   
+        {
+            "name": "Run manageLib",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/manageLib.exe",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "D:/Devlinux/msys64/ucrt64/bin/gdb.exe",
+            "preLaunchTask": "Build manageLib"
+        }
+    ]
+}
